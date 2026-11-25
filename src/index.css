@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+:root{--accent-rgb:14 165 164;color-scheme:light}
+:root.dark{color-scheme:dark}
+html,body{margin:0;background:#f2f2f7;-webkit-font-smoothing:antialiased}
+html.dark,html.dark body{background:#000}
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display','Segoe UI',Roboto,Helvetica,Arial,sans-serif;letter-spacing:-0.005em}
+.safe-b{padding-bottom:env(safe-area-inset-bottom)}
+.no-scrollbar::-webkit-scrollbar{display:none}
+.no-scrollbar{scrollbar-width:none}
