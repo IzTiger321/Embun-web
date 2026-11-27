@@ -1,101 +1,90 @@
-# Embun
+# Embun (Web)
 
-**Your finances, organized. Your money, understood.**
+Embun is a personal finance app for Malaysia. This repository is the **browser version**. The Android version lives in a separate repository, [Embun-apk](https://github.com/IzTiger321/Embun-apk), and loads this web app.
 
-Embun is a personal finance tracker designed to help people manage their everyday finances in one place. Built with a focus on simplicity, privacy and accessibility, Embun makes it easier to keep track of accounts, transactions, budgets and financial activity.
+Both versions are one product: they share the same features, data and backend. This repo holds the web code and its releases; project documentation is kept in Notion.
 
-**Live application:** [https://iztiger-embun.vercel.app](https://iztiger-embun.vercel.app)
+## Live app
 
----
+- Production: https://iztiger-embun.vercel.app
+- Other alias (same project): https://embun-theta.vercel.app
 
 ## Features
 
-### Financial Management
-- Manage multiple financial institutions and accounts.
-- Keep track of savings and credit card accounts.
-- Record and organize income and expenses.
-- Categorize transactions and manage budget allocations.
-- Track subscriptions and bill payments.
+- Accounts, cards and e-wallets grouped by institution, with colour cards
+- Transactions, budget pots, subscriptions and bill settlement
+- Contacts with bank account, DuitNow ID and DuitNow QR image
+- Analytics by day, week, month and year
+- CSV import and export, encrypted backup download
+- Device list with remote sign-out
+- Privacy mode (choose what the eye button hides), Privacy Policy and Terms of Service
 
-### Financial Insights
-- View financial activity through interactive analytics.
-- Explore daily, weekly, monthly and yearly summaries.
-- Monitor financial activity across different accounts.
-- Keep track of spending patterns.
+## Stack
 
-### Contacts
-- Organize financial contacts.
-- Save bank account details.
-- Store DuitNow identifiers and QR code images for convenient reference.
+- React 18, Vite 5, TypeScript, Tailwind CSS 3
+- Supabase (authentication, Postgres with Row Level Security, Realtime)
+- Recharts for charts, @noble/ciphers for encryption of selected fields
 
-### Privacy and Security
-- Account authentication.
-- An encrypted vault for selected sensitive information.
-- Privacy controls to hide financial balances and transaction details.
-- Manage active devices and sign out remotely.
-- Export encrypted backups.
-- Account deletion controls.
+## Project layout
 
-### Data Management
-- Import transactions using CSV files.
-- Export financial records.
-- Download encrypted backups for safekeeping.
+```
+index.html              App entry page (Content Security Policy, icons)
+public/embun.svg        Logo (also embun.png)
+src/main.tsx            React entry point
+src/App.tsx             All screens, forms, charts, auth, vault and legal pages
+src/lib.ts              Supabase client, encryption helpers, CSV and device helpers
+src/index.css           Tailwind base and global styles
+src/vite-env.d.ts       Vite type definitions
+package.json            Dependencies and scripts
+vite.config.ts          Vite configuration
+tailwind.config.js      Tailwind configuration
+postcss.config.js       PostCSS configuration
+tsconfig.json           TypeScript configuration
+```
 
-### Responsive Experience
-- Designed for desktop and mobile devices.
-- Accessible through a modern web browser.
-- Built with a Progressive Web App-style experience in mind.
+## Run locally
 
----
+Requires Node.js 20 or newer.
 
-## Getting Started
+```bash
+npm install
+npm run dev
+```
 
-Visit the application:
+Open the address shown in the terminal (usually http://localhost:5173).
 
-**[Open Embun](https://embun-theta.vercel.app)**
+## Build
 
-Sign in with your account to access your personal financial dashboard.
+```bash
+npm run build
+npm run preview
+```
 
----
+The build output goes to `dist/`.
 
-## Technology
+## Deploy
 
-Embun uses modern web technologies and cloud services to deliver its application experience.
+The Vercel project **embun** is connected to this repository. Each push to `main` starts a deployment. Check that it shows **Ready**, then promote it to Production if it isn't already.
 
-- **Web hosting:** Vercel
-- **Backend and database services:** Supabase
-- **Application:** Web-based, responsive experience
+Vercel settings: framework preset Vite, build command `vite build`, output directory `dist`, Node.js 22.
 
----
+## Backend configuration (owner)
 
-## Privacy
+- Supabase Authentication > URL Configuration: Site URL set to `https://iztiger-embun.vercel.app`, and the same URL in Redirect URLs.
+- Supabase Authentication > Email Templates > Magic Link: include `{{ .Token }}` so the vault passphrase change email contains a code.
 
-Financial information is personal. Embun includes privacy-focused features designed to help users manage and protect their information.
+The Supabase anon key in `src/lib.ts` is public by design. Access is controlled by Row Level Security, not by hiding the key. Never add a service-role key to this repository.
 
-Users can control the visibility of financial information, manage their devices and use available data export and account management features.
+## Security notes
 
-Please refer to the application's privacy notice for further information about data handling.
+- Sign-in session is kept in the browser and ends after 30 minutes without activity or on sign-out.
+- The vault passphrase unlocks encrypted fields on the device. Embun cannot recover a forgotten passphrase.
+- Only selected sensitive fields are encrypted. Other fields (for example institution names and dates) are plain text.
 
----
+## Documentation and records
 
-## Project Status
+Project memory, architecture, decisions, change log, issues and release records are kept in Notion under "[EBN] Embun (Project)". Web-specific logs and the current web build are in "[EBN] Web App — Current Build". Records for both versions use the same product name; the Platform column separates Web from APK.
 
-Embun is actively developed, with improvements focused on usability, reliability, privacy and financial management features.
+## Privacy and terms
 
-Features and functionality may evolve as the application continues to develop.
-
----
-
-## Disclaimer
-
-Embun is a personal financial tracking and organizational tool. It is not a bank, financial institution, investment platform or provider of professional financial advice.
-
-Users are responsible for the accuracy of information they enter and should independently verify important financial records.
-
----
-
-## Acknowledgements
-
-Thank you to everyone who supports and contributes to the development of Embun.
-
-**Embun — Take control of your finances.**
+The Privacy Policy and Terms of Service are in the app (Settings, or the link on the sign-in page). They are written for Malaysian users under the Personal Data Protection Act 2010, with CCPA and CPRA principles for California residents.
