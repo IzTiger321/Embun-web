@@ -2,7 +2,7 @@ import {createClient} from '@supabase/supabase-js';
 import {chacha20poly1305} from '@noble/ciphers/chacha';
 // The publishable anon key is public by design; access is enforced by Row Level Security.
 // The login session persists across page refreshes in localStorage and is ended by sign-out or by the idle timeout in App.tsx.
-export const sb=createClient('https://jcmblpfnfffhnodvoone.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbWJscGZuZmZmaG5vZHZvb25lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5NTg1ODAsImV4cCI6MjExMDUzNDU4MH0.j7chMzc01KJiCggF7csj4mU5c5qzFcujAfgnMMW4A-4',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,flowType:'pkce',storageKey:'embun-auth',storage:typeof window!=='undefined'?window.localStorage:undefined}});
+export const sb=createClient('https://jcmblpfnfffhnodvoone.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpjbWJscGZuZmZmaG5vZHZvb25lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ5NTg1ODAsImV4cCI6MjExMDUzNDU4MH0.j7chMzc01KJiCggF7csj4mU5c5qzFcujAfgnMMW4A-4',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,flowType:'pkce',storageKey:'embun-auth',storage:typeof window!=='undefined'?window.localStorage:undefined}});
 const te=new TextEncoder(),td=new TextDecoder();
 export const NL=String.fromCharCode(10),CR=String.fromCharCode(13),QT=String.fromCharCode(34);
 const b64=(u:Uint8Array)=>{let s='';u.forEach(b=>{s+=String.fromCharCode(b)});return btoa(s)};
