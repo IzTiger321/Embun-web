@@ -62,14 +62,15 @@ function Form({title,fields,init,onSave,onClose,onDelete,extra,saveLabel='Save'}
 
 function Auth({onAuth}:any){
  const [mode,setMode]=useState('in');const [email,setEmail]=useState('');const [pw,setPw]=useState('');const [msg,setMsg]=useState('');const [busy,setBusy]=useState(false);const [consent,setConsent]=useState(false);
+ const signGoogle=async()=>{setMsg('');if(mode==='up'&&!consent){setMsg('Please read and agree to the Privacy Notice to create an account.');return}const {error}=await sb.auth.signInWithOAuth({provider:'google',options:{redirectTo:location.origin}});if(error)setMsg(error.message)};
  const go=async()=>{setMsg('');if(mode==='up'&&!consent){setMsg('Please read and agree to the Privacy Notice to create an account.');return}setBusy(true);let r:any;if(mode==='in')r=await sb.auth.signInWithPassword({email:email.trim(),password:pw});else{r=await sb.auth.signUp({email:email.trim(),password:pw,options:{emailRedirectTo:location.origin}});if(!r.error&&!r.data.session)r=await sb.auth.signInWithPassword({email:email.trim(),password:pw})}setBusy(false);if(r.error){setMsg(r.error.message);return}if(r.data.session){if(mode==='up'&&r.data.user){await sb.from('profiles').update({privacy_consent_at:new Date().toISOString(),privacy_notice_version:PRIVACY_VERSION}).eq('id',r.data.user.id)}onAuth(pw)}};
- return <Shell><input className={inp} type='email' placeholder='Email' value={email} onChange={e=>setEmail(e.target.value)}/><PwField placeholder='Password (min. 8 characters)' value={pw} onChange={(e:any)=>setPw(e.target.value)} onKeyDown={(e:any)=>{if(e.key==='Enter')go()}}/>{mode==='up'&&<label className='flex gap-2.5 text-xs text-slate-500 leading-relaxed'><input type='checkbox' className='mt-0.5 h-4 w-4 shrink-0 accent-current' checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>I have read the Privacy Notice and consent to Embun collecting and processing my personal data as described, in line with the Personal Data Protection Act 2010 of Malaysia.</span></label>}{msg&&<p className='text-sm text-amber-600'>{msg}</p>}<Btn onClick={go} disabled={busy} className='w-full'>{mode==='in'?'Sign in':'Create account'}</Btn><button className='text-sm text-accent w-full font-medium' onClick={()=>{setMode(mode==='in'?'up':'in');setMsg('')}}>{mode==='in'?'New here? Create an account':'Already registered? Sign in'}</button><a href='#legal' className='block text-center text-xs text-slate-500 underline'>Privacy Policy and Terms of Service</a></Shell>}
+ return <Shell><input className={inp} type='email' placeholder='Email' value={email} onChange={e=>setEmail(e.target.value)}/><PwField placeholder='Password (min. 8 characters)' value={pw} onChange={(e:any)=>setPw(e.target.value)} onKeyDown={(e:any)=>{if(e.key==='Enter')go()}}/>{mode==='up'&&<label className='flex gap-2.5 text-xs text-slate-500 leading-relaxed'><input type='checkbox' className='mt-0.5 h-4 w-4 shrink-0 accent-current' checked={consent} onChange={e=>setConsent(e.target.checked)}/><span>I have read the Privacy Notice and consent to Embun collecting and processing my personal data as described, in line with the Personal Data Protection Act 2010 of Malaysia.</span></label>}{msg&&<p className='text-sm text-amber-600'>{msg}</p>}<Btn onClick={go} disabled={busy} className='w-full'>{mode==='in'?'Sign in':'Create account'}</Btn><div className='flex items-center gap-2 text-xs text-slate-400'><span className='flex-1 h-px bg-slate-200 dark:bg-zinc-800'/>or<span className='flex-1 h-px bg-slate-200 dark:bg-zinc-800'/></div><Btn kind='ghost' onClick={signGoogle} className='w-full'>Continue with Google</Btn><button className='text-sm text-accent w-full font-medium' onClick={()=>{setMode(mode==='in'?'up':'in');setMsg('')}}>{mode==='in'?'New here? Create an account':'Already registered? Sign in'}</button><a href='#legal' className='block text-center text-xs text-slate-500 underline'>Privacy Policy and Terms of Service</a></Shell>}
 
 function Vault({session,pw,onReady}:any){
  const [prof,setProf]=useState<any>(null);const [p1,setP1]=useState('');const [p2,setP2]=useState('');const [err,setErr]=useState('');const [busy,setBusy]=useState(false);
  useEffect(()=>{(async()=>{const did=localStorage.getItem('embun_device')||'none';if(pw){await sb.from('user_devices').update({revoked:false}).eq('device_id',did)}else{const {data:dv}=await sb.from('user_devices').select('revoked').eq('device_id',did).maybeSingle();if(dv?.revoked){await sb.auth.signOut();return}}const {data}=await sb.from('profiles').select('*').eq('id',session.user.id).maybeSingle();setProf(data||{})})()},[]);
  const unlock=async(phrase:string,remember=false)=>{setErr('');setBusy(true);try{const fresh=!prof.vault_check;if(fresh){const salt=newSalt();await deriveKeys(phrase,salt,600000);const chk=await enc('embun-ok');const {error}=await sb.from('profiles').upsert({id:session.user.id,kdf_salt:salt,kdf_iterations:600000,vault_check:chk});if(error)throw error}else{await deriveKeys(phrase,prof.kdf_salt,prof.kdf_iterations);if((await dec(prof.vault_check))!=='embun-ok')throw new Error('bad')}if(remember)setRem(phrase);onReady()}catch(e:any){lock();clearRem();setErr(prof.vault_check?'Wrong passphrase. Please try again.':e.message)}setBusy(false)};
- useEffect(()=>{if(prof){const r=getRem();if(r)unlock(r)}},[prof]);
+ useEffect(()=>{if(prof&&prof.vault_remember_enabled){const r=getRem();if(r)unlock(r)}},[prof]);
  if(!prof)return <Splash/>;
  const fresh=!prof.vault_check;
  const go=()=>{if(fresh&&(p1.length<8||p1!==p2))return setErr('Use at least 8 characters and make sure both entries match.');unlock(p1)};
@@ -159,13 +160,15 @@ function LegalPage(){
 }
 
 function VaultMemory({prof,say}:any){
- const [on,setOn]=useState(!!getRem());const [ask,setAsk]=useState(false);const [p,setP]=useState('');const [busy,setBusy]=useState(false);const [err,setErr]=useState('');
- const enable=async()=>{setErr('');if(!p)return setErr('Enter your vault passphrase.');setBusy(true);try{await deriveKeys(p,prof.kdf_salt,prof.kdf_iterations);if((await dec(prof.vault_check))!=='embun-ok')throw new Error('Wrong passphrase.');setRem(p);setOn(true);setAsk(false);setP('');say('Vault will stay unlocked on this device for 3 hours')}catch(e:any){setErr(e.message||'Could not verify passphrase.')}setBusy(false)};
- const disable=()=>{clearRem();setOn(false);setAsk(false);say('Vault memory turned off on this device')};
+ const [ask,setAsk]=useState(false);const [p,setP]=useState('');const [busy,setBusy]=useState(false);const [err,setErr]=useState('');
+ const on=!!prof?.vault_remember_enabled;
+ const setFlag=async(v:boolean)=>{const {error}=await sb.from('profiles').update({vault_remember_enabled:v}).eq('id',prof.id);if(error)throw error};
+ const enable=async()=>{setErr('');if(!p)return setErr('Enter your vault passphrase.');setBusy(true);try{await deriveKeys(p,prof.kdf_salt,prof.kdf_iterations);if((await dec(prof.vault_check))!=='embun-ok')throw new Error('Wrong passphrase.');setRem(p);await setFlag(true);setAsk(false);setP('');say('Vault will stay unlocked on this device for 3 hours')}catch(e:any){setErr(e.message||'Could not verify passphrase.')}setBusy(false)};
+ const disable=async()=>{clearRem();try{await setFlag(false)}catch(e:any){say(e.message)}setAsk(false);say('Vault memory turned off')};
  return <div className='space-y-3'>
   <div className='flex items-center justify-between text-sm'><span>Keep vault unlocked on this device for 3 hours</span><input type='checkbox' className='h-5 w-5 accent-current' checked={on} onChange={e=>{if(e.target.checked){setAsk(true)}else{disable()}}}/></div>
   {ask&&!on&&<div className='space-y-2'><PwField placeholder='Vault passphrase to confirm' value={p} onChange={(e:any)=>setP(e.target.value)} onKeyDown={(e:any)=>{if(e.key==='Enter')enable()}}/>{err&&<p className='text-xs text-red-500'>{err}</p>}<div className='flex gap-2'><Btn onClick={enable} disabled={busy} className='flex-1'>{busy?'Checking…':'Turn on'}</Btn><Btn kind='ghost' onClick={()=>{setAsk(false);setErr('');setP('')}}>Cancel</Btn></div></div>}
-  <p className='text-xs text-slate-500'>Off by default. The passphrase is stored on this device only, and expires after 3 hours. Only turn this on for a device you control.</p>
+  <p className='text-xs text-slate-500'>The on/off setting is saved to your account. The passphrase itself is kept only on this device and expires after 3 hours. If it has expired on this device, you will be asked for it again.</p>
  </div>};
 
 function Analytics({tx,accs,cats,groups}:any){
@@ -198,8 +201,9 @@ function Analytics({tx,accs,cats,groups}:any){
 function Main({session,pw}:any){
  const uid=session.user.id;
  const did=useMemo(()=>{let x=localStorage.getItem('embun_device');if(!x){x=crypto.randomUUID();localStorage.setItem('embun_device',x)}return x},[]);
- const [d,setD]=useState<any>(null);const [tab,setTab]=useState('home');const [m,setM]=useState<any>(null);const [more,setMore]=useState(false);const [toast,setToast]=useState('');const [q,setQ]=useState('');const [fa,setFa]=useState('');const [cq,setCq]=useState('');
+ const [d,setD]=useState<any>(null);const [tab,setTab]=useState(()=>{try{return localStorage.getItem('embun_tab')||'home'}catch{return 'home'}});const [m,setM]=useState<any>(null);const [more,setMore]=useState(false);const [toast,setToast]=useState('');const [q,setQ]=useState('');const [fa,setFa]=useState('');const [cq,setCq]=useState('');
  const rt=useRef<any>(null);
+  useEffect(()=>{try{localStorage.setItem('embun_tab',tab)}catch{}},[tab]);
  const say=(t:string)=>{setToast(t);setTimeout(()=>setToast(''),4500)};
  const reload=useCallback(async()=>{
   try{
@@ -319,7 +323,7 @@ export default function App(){
  if(hash==='#legal')return <LegalPage/>;
  const [session,setSession]=useState<any>(undefined);const [ready,setReady]=useState(false);const [pw,setPw]=useState<string>('');
  useEffect(()=>{const mark=()=>{try{localStorage.setItem('embun_last_active',String(Date.now()))}catch{}};const check=async()=>{const t=Number(localStorage.getItem('embun_last_active')||0);if(t&&Date.now()-t>IDLE_MS){lock();clearRem();setReady(false);setPw('');await removeThisDevice();await sb.auth.signOut()}};check();mark();let last=0;const act=()=>{const n=Date.now();if(n-last>15000){last=n;mark()}};const ev=['pointerdown','keydown','touchstart','scroll'];ev.forEach(e=>window.addEventListener(e,act,{passive:true}));const iv=setInterval(check,60000);const vis=()=>{if(document.visibilityState==='visible')check()};document.addEventListener('visibilitychange',vis);return()=>{ev.forEach(e=>window.removeEventListener(e,act));clearInterval(iv);document.removeEventListener('visibilitychange',vis)}},[]);
- useEffect(()=>{sb.auth.getSession().then(({data})=>setSession(data.session));const {data:l}=sb.auth.onAuthStateChange((_e,s)=>{setSession(s);if(!s){lock();clearRem();setReady(false);setPw('')}});return()=>l.subscription.unsubscribe()},[]);
+ useEffect(()=>{sb.auth.getSession().then(({data})=>setSession(data.session));const {data:l}=sb.auth.onAuthStateChange((_e,s)=>{setSession(s);if(!s){lock();clearRem();try{localStorage.removeItem('embun_tab')}catch{}setReady(false);setPw('')}});return()=>l.subscription.unsubscribe()},[]);
  if(session===undefined)return <Splash/>;
  if(!session)return <Auth onAuth={(p:string)=>setPw(p)}/>;
  if(!ready)return <Vault session={session} pw={pw} onReady={()=>{setPw('');setReady(true)}}/>;
